@@ -12,6 +12,7 @@ import logging
 import shutil
 import datetime
 import uuid
+import requests
 
 
 config = configparser.ConfigParser()
@@ -91,22 +92,19 @@ def appTrim(app):
 	return app
 
 def clusterTrim(cluster):
-	if cluster == "n":
-		cluster = "newtv"
-	elif cluster == "c":
-		cluster = "cn-cibn"
-	elif cluster == "o":
-		cluster = "online"
-	elif cluster == "of":
-		cluster = "cn-offline"
-	elif cluster == "hk":
-		cluster = "hkonline"
-	elif cluster == "us":
-		cluster = "global"
-	return cluster
+	clusterMap = config.get("app", "cluster")
+	clusterMap = clusterMap.split(",")
+	cMap = {}
+	for item in clusterMap:
+		t = item.split("=")
+		cMap[t[0]] = t[1]
+	
+	if cluster in cMap.keys():
+		return cMap[cluster]
+	else:
+		return cluster
 
 def appStatus(content,contact, member):
-	content = content.replace('[@ME]  ', '')
 	cmd = content.split(' ')
 	try:
 		cluster = clusterTrim(cmd[1])
@@ -129,15 +127,39 @@ def deployApp(content):
 def diskClean(content):
 	return("此功能暂不可用")
 
+def appOwner(content):
+	api = config.get("cmdb", "pubapi")
+	cmd = content.split(' ')
+	try:
+		app = cmd[1]
+		r = requests.get(api + "?type=app&value=" + app)
+		d = r.json()
+		c = d['objects']
+		contact = []
+		for k,v in c.items():
+			contact.append(v['fields']['friendlyname'] + '(' + v['fields']['phone'] + ')')
+		contact = "\n           ".join(contact)
+		link = config.get("cmdb", "linkapi") + "&type=app&name=" + app
+		errmsg = "APP: " + app + "\n联系人: " + contact + "\nAPP关联图: " + link
+		return errmsg
+	except:
+		logging.exception("Exception Logged")
+		errmsg = "【app联系人查询】执行异常"
+		return errmsg
+
 def onQQMessage(bot, contact, member, content):
 	if contact.ctype == "group" and ('@ME' not in content):
 		return False
-	if re.match('^(\[@ME\]\s\s)?st\s.*', content):
+	
+	content = content.replace('[@ME]  ', '')
+	if re.match('^st\s.*', content):
 		bot.SendTo(contact, appStatus(content,contact, member))
-	elif re.match('^(\[@ME\]\s\s)?dp\s.*', content):
+	elif re.match('^dp\s.*', content):
 		bot.SendTo(contact, deployApp(content))
-	elif re.match('^(\[@ME\]\s\s)?c\s.*', content):
+	elif re.match('^c\s.*', content):
 		bot.SendTo(contact, diskClean(content))
+	elif re.match('^o\s.*', content):
+		bot.SendTo(contact, appOwner(content))
 	else:
 		cmdError(bot, contact)
 
