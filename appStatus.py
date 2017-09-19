@@ -13,6 +13,7 @@ import shutil
 import datetime
 import uuid
 import requests
+from random import choice
 
 
 config = configparser.ConfigParser()
@@ -77,7 +78,15 @@ def sendMail(qq, cluster, app):
 	return errmsg
 
 def cmdError(bot, contact):
+	smiles = config.get("msg", "smiles").split(",")
+	pre = config.get("msg", "pre").split(",")
+	preChoice = choice(pre)
+	smilesChoice = choice(smiles)
+	smilesChoice1 = choice(smiles)
+	smilesChoice2 = choice(smiles)
 	help = config.get('msg', 'help')
+	help = help.replace("提供以下指令",preChoice + smilesChoice)
+	help = smilesChoice1 + help + smilesChoice2
 	help = help.replace("\\n", "\n")
 	bot.SendTo(contact, help)
 	
@@ -215,7 +224,7 @@ def onQQMessage(bot, contact, member, content):
 	elif re.match('^dp\s.*', content):
 		bot.SendTo(contact, deployApp(content, cmd, qq))
 	elif re.match('^c\s.*', content):
-		bot.SendTo(contact, diskClean(content, cmd, qq))
+		bot.SendTo(contact, diskClean(content, cmd))
 	elif re.match('^o\s.*', content):
 		bot.SendTo(contact, appOwner(content, cmd))
 	else:
