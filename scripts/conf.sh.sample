@@ -1,0 +1,10 @@
+GRAFANA="http://monitor.xxx.cn"
+KEY="key"
+panelId=(2 7 5 4 9)
+
+online="10.1.1.1"
+newtv="10.2.2.2"
+cncibn="10.3.3.3"
+cnoffline="10.4.4.4"
+hkonline="10.5.5.5"
+global="10.6.6.6"

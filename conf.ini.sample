@@ -1,0 +1,28 @@
+[influxdb]
+server = 10.1.1.1
+port = 8086
+user = 
+passwd = 
+database = tengine
+
+[grafana]
+url = http://monitor.xxx.cn
+key = keyssssssss
+
+[msg]
+help = [qqbot]提供以下指令:\n1) st cluster app 查询app最近1小时监控图表\n2) dp cluster app 重部cluster上的app\n3) c ip 磁盘清理\nQQ群里需要先@我再发指令，加我为好友后直接发送指令
+cluster = 【集群】可输入完整集群名称，也可以简写：\nn = newtv\nc = cn-cibn\no = online\nof = cn-offline\nhk = hkonline\nus = global\nop = op
+app = 【APP】完整app包含app名称和监听端口，如 ota.8080， 端口为8080的可以不写端口，非8080端口需要明确写出端口，无端口的以 . 结尾，例如op集群的cmdb 需要写成 cmdb.
+
+[mail]
+api = http://localhost:3001/api/attachmail
+server = smtp.xxx.cn:25
+user = report@xxx.com
+passwd = abcefj
+
+[log]
+err = /tmp/qqbot.log
+
+[web]
+url = http://11.1.1.1/get.php
+dir = /wwwroot/qqbot-img

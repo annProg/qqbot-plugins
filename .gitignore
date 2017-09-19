@@ -1,0 +1,4 @@
+*.ini
+*.png
+conf.sh
+*.pyc
