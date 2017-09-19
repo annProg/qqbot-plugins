@@ -77,16 +77,16 @@ def sendMail(qq, cluster, app):
 	
 	return errmsg
 
-def cmdError(bot, contact):
+def smilesRandom():
 	smiles = config.get("msg", "smiles").split(",")
+	return choice(smiles)
+
+def cmdError(bot, contact):
 	pre = config.get("msg", "pre").split(",")
 	preChoice = choice(pre)
-	smilesChoice = choice(smiles)
-	smilesChoice1 = choice(smiles)
-	smilesChoice2 = choice(smiles)
 	help = config.get('msg', 'help')
-	help = help.replace("提供以下指令",preChoice + smilesChoice)
-	help = smilesChoice1 + help + smilesChoice2
+	help = help.replace("提供以下指令",preChoice + smilesRandom())
+	help = smilesRandom() + help + smilesRandom()
 	help = help.replace("\\n", "\n")
 	bot.SendTo(contact, help)
 	
@@ -220,13 +220,13 @@ def onQQMessage(bot, contact, member, content):
 		qq = contact.qq
 
 	if re.match('^st\s.*', content):
-		bot.SendTo(contact, appStatus(content, cmd, qq))
+		bot.SendTo(contact, smilesRandom() + appStatus(content, cmd, qq))
 	elif re.match('^dp\s.*', content):
-		bot.SendTo(contact, deployApp(content, cmd, qq))
+		bot.SendTo(contact, smilesRandom() + deployApp(content, cmd, qq))
 	elif re.match('^c\s.*', content):
-		bot.SendTo(contact, diskClean(content, cmd))
+		bot.SendTo(contact, smilesRandom() + diskClean(content, cmd))
 	elif re.match('^o\s.*', content):
-		bot.SendTo(contact, appOwner(content, cmd))
+		bot.SendTo(contact, smilesRandom() + appOwner(content, cmd))
 	else:
 		cmdError(bot, contact)
 
