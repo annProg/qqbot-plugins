@@ -35,6 +35,7 @@ def check(type, value):
 		if i['value'] == value:
 			return True
 	return False
+
 def cpImg(imgname):
 	today = str(datetime.date.today())
 	webdir = config.get('web', 'dir')
@@ -45,7 +46,7 @@ def cpImg(imgname):
 	shutil.copy(imgname, destdir + '/' + newname)
 	return today,newname
 
-def sendMail(contact, cluster, app, member):
+def sendMail(qq, cluster, app):
 	imgdir = CWD + '/scripts/' + cluster + '_' + app
 	imgname = imgdir + '/grafana.png'
 	try:
@@ -57,10 +58,8 @@ def sendMail(contact, cluster, app, member):
 	today,newname = cpImg(imgname)
 	webfile = config.get('web', 'url') + '?date=' + today + "&id=" + newname
 	
-	if contact.ctype == "group":
-		addr = member.qq + '@qq.com'
-	else:
-		addr = contact.qq + '@qq.com'
+	addr = qq + '@qq.com'
+
 	sub = '【监控图表】' + cluster + ':' + app
 	filelist = [imgname]
 	content = '<img style="max-width:100%;" class="aligncenter" src="cid:' + imgname + '" alt="app监控图表" />'
@@ -104,62 +103,121 @@ def clusterTrim(cluster):
 	else:
 		return cluster
 
-def appStatus(content,contact, member):
-	cmd = content.split(' ')
+def appStatus(content, cmd, qq):
 	try:
 		cluster = clusterTrim(cmd[1])
 		app = appTrim(cmd[2])
 		if not check("cluster", cluster) or not check("app", app):
-			msg = "集群" + cluster + "或APP" + app + "不存在"
+			msg = "集群 " + cluster + "或APP " + app + "不存在"
 			msg = msg + "\n" + config.get('msg', 'cluster') + "\n" + config.get('msg', 'app')
 			msg = msg.replace('\\n' , '\n')
 			return msg
-		errmsg = sendMail(contact, cluster, app, member)
+		errmsg = sendMail(qq, cluster, app)
 		return errmsg
 	except:
 		logging.exception("Exception Logged")
 		errmsg = "【app状态查询】执行异常"
 		return errmsg
 
-def deployApp(content):
+def mpaasSuperAdmin():
+	super = config.get("app", "superadmin")
+	super = super.split(",")
+	superadmin = {}
+	for item in super:
+		i = item.split('=')
+		superadmin[i[0]] = i[1]
+	return superadmin
+
+def deployApp(content, cmd, qq):
+	try:
+		cluster = clusterTrim(cmd[1])
+		app = cmd[2]
+		owner, qqOwner = _appOwner(app)
+		if not owner or not check("cluster", cluster):
+			msg = "集群 " + cluster + "或APP " + app + "不存在"
+			msg = msg + "\n" + config.get('msg', 'cluster').replace('\\n', '\n')
+			msg = msg + "\n" + "【APP】需要先录入CMDB才能使用机器人部署"
+			return msg
+		superadmin = dict(mpaasSuperAdmin(), **qqOwner)
+		if qq not in superadmin.keys():
+			msg = "【APP重部】" + qq + " 没有权限操作 " + app + \
+				"\n  权限数据基于CMDB，请确认您在CMDB中填写了QQ号"
+			return msg
+		msg = os.popen(config.get("app", "mpaasupdate") + " -cluster " + cluster + " -app " + app + \
+			" -email " + superadmin[qq]).read()
+		if not msg:
+			msg = "【APP重部】执行异常"
+		return msg
+	except:
+		logging.exception("Exception Logged")
+		errmsg = "【APP重部】执行异常"
+		return errmsg
+		
+def diskClean(content, cmd):
 	return("此功能暂不可用")
 
-def diskClean(content):
-	return("此功能暂不可用")
-
-def appOwner(content):
+def _appOwner(app):
 	api = config.get("cmdb", "pubapi")
-	cmd = content.split(' ')
+	r = requests.get(api + "?type=app&value=" + app)
+	d = r.json()
+	c = d['objects']
+	if not c:
+		return([], {})
+	owner = []
+	qqOwner = {}
+	for k,v in c.items():
+		owner.append(v['fields']['friendlyname'] + '(' + v['fields']['phone'] + ')')
+		qqOwner[v['fields']['qq']] = v['fields']['email']
+	return(owner, qqOwner)
+
+def appOwner(content, cmd):
 	try:
 		app = cmd[1]
-		r = requests.get(api + "?type=app&value=" + app)
-		d = r.json()
-		c = d['objects']
-		contact = []
-		for k,v in c.items():
-			contact.append(v['fields']['friendlyname'] + '(' + v['fields']['phone'] + ')')
-		contact = "\n           ".join(contact)
+		owner,qq = _appOwner(app)
+		if not owner:
+			return("【APP联系人查询】 未找到APP：" + app)
+		owner = "\n           ".join(owner)
 		link = config.get("cmdb", "linkapi") + "&type=app&name=" + app
-		errmsg = "APP: " + app + "\n联系人: " + contact + "\nAPP关联图: " + link
+		errmsg = "APP: " + app + "\n联系人: " + owner + "\nAPP关联图: " + link
 		return errmsg
 	except:
 		logging.exception("Exception Logged")
 		errmsg = "【app联系人查询】执行异常"
 		return errmsg
 
+def showHelp(contend, cmd):
+	options = config.options('msg')
+	h = []
+	for item in options:
+		h.append("help " + item)
+	h.remove("help help")
+
+	try:
+		return(config.get("msg", cmd[1]).replace("\\n", "\n"))
+	except:
+		return(config.get("msg", "help").replace("\\n", "\n") + "\n\n使用以下指令查看更多帮助:\n" + "\n".join(h))
+
 def onQQMessage(bot, contact, member, content):
 	if contact.ctype == "group" and ('@ME' not in content):
 		return False
 	
 	content = content.replace('[@ME]  ', '')
+	cmd = content.split(' ')
+	
+	# 获取消息发送者QQ号
+	if contact.ctype == "group":
+		qq = member.qq
+	else:
+		qq = contact.qq
+
 	if re.match('^st\s.*', content):
-		bot.SendTo(contact, appStatus(content,contact, member))
+		bot.SendTo(contact, appStatus(content, cmd, qq))
 	elif re.match('^dp\s.*', content):
-		bot.SendTo(contact, deployApp(content))
+		bot.SendTo(contact, deployApp(content, cmd, qq))
 	elif re.match('^c\s.*', content):
-		bot.SendTo(contact, diskClean(content))
+		bot.SendTo(contact, diskClean(content, cmd, qq))
 	elif re.match('^o\s.*', content):
-		bot.SendTo(contact, appOwner(content))
+		bot.SendTo(contact, appOwner(content, cmd))
 	else:
 		cmdError(bot, contact)
 
