@@ -93,7 +93,7 @@ def cmdError(bot, contact):
 def appTrim(app):
 	if re.match('^.*\.$', app):
 		app = app.split(".")[0]
-	elif re.match('^.*\.[0-9]{2-5}$', app):
+	elif re.match('^.*\.[0-9]{2,5}$', app):
 		app = app
 	else:
 		app = app + ".8080"
