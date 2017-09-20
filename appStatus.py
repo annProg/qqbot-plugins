@@ -194,6 +194,38 @@ def appOwner(content, cmd):
 		errmsg = "【app联系人查询】执行异常"
 		return errmsg
 
+def appFilter(app):
+	if re.match('.*第三方代理.*', app):
+		return False
+	return True
+
+def appMap(app):
+	app = app.split('::')[2]
+	app = re.sub('.*?\.(.*)', '\\1', app)
+	return app	
+
+def myCIs(contend, cmd):
+	hide = "&hide=all"
+	api = config.get("cmdb", "pubapi")
+	try:
+		person = cmd[1]
+		r = requests.get(api + "?type=person&value=" + person + "&show=ApplicationSolution,Person&depth=1")
+		d = r.json()
+		relations = d['relations']
+		apps = list(relations.keys())
+		apps = filter(appFilter, apps)
+		apps = map(appMap, apps)
+		apps = ", ".join(apps)
+
+		link = re.sub('\?.*', '', config.get("cmdb", "linkapi")) + "?type=person&name=" + person + hide
+		return(person + "负责的APP: \n" + apps + "\n" + link)
+	except:
+		logging.exception("Exception Logged")
+		errmsg = "【人员名下APP查询】执行异常"
+		return errmsg
+		
+	
+
 def showHelp(contend, cmd):
 	options = config.options('msg')
 	h = []
@@ -227,6 +259,8 @@ def onQQMessage(bot, contact, member, content):
 		bot.SendTo(contact, smilesRandom() + diskClean(content, cmd))
 	elif re.match('^o\s.*', content):
 		bot.SendTo(contact, smilesRandom() + appOwner(content, cmd))
+	elif re.match('^u\s.*', content):
+		bot.SendTo(contact, smilesRandom() + myCIs(content, cmd))
 	else:
 		cmdError(bot, contact)
 
