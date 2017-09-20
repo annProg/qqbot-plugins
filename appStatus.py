@@ -225,6 +225,25 @@ def myCIs(contend, cmd):
 		return errmsg
 		
 	
+def isAdmin(qq):
+	admins = config.get("qqbot", "admin").split(",")
+	if qq in admins:
+		return True
+	return False
+
+def manageBot(bot, contact, content, qq):
+	if not isAdmin(qq):
+		return False
+	if re.match('^-stop$', content):
+		bot.SendTo(contact, smilesRandom() + "qqbot即将关闭")
+		bot.Stop()
+	elif re.match('^-fresh$', content):
+		bot.SendTo(contact, smilesRandom() + "qqbot即将重启, 需要重新登录")
+		bot.FreshRestart()
+	elif re.match('^-restart$', content):
+		bot.SendTo(contact, smilesRandom() + "qqbot即将重启")
+		bot.Restart()
+	
 
 def showHelp(contend, cmd):
 	options = config.options('msg')
@@ -261,6 +280,8 @@ def onQQMessage(bot, contact, member, content):
 		bot.SendTo(contact, smilesRandom() + appOwner(content, cmd))
 	elif re.match('^u\s.*', content):
 		bot.SendTo(contact, smilesRandom() + myCIs(content, cmd))
+	elif re.match('^-.*', content):
+		manageBot(bot, contact, content, qq)
 	else:
 		cmdError(bot, contact)
 
