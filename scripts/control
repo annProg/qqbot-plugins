@@ -1,0 +1,54 @@
+#!/bin/bash
+# 可配置以下计划任务在qqbot异常退出时重新启动
+# */5 * * * * root /path/control start &>/dev/null
+
+cwd=`cd $(dirname $0);pwd`
+cd $cwd
+
+[ $# -lt 1 ] && echo "$0 (start|stop|restart|reload|status)"
+
+pid=`ps -A |grep qqbot |awk '{print $1}' |tr '\n' ' '`
+
+function start()
+{
+	if [ "$pid"x != ""x ];then
+		echo "qqbot already running($pid)"
+	else
+		source qqbot/bin/activate
+		qqbot -u zx &>>log/qqbot.log &
+		deactivate
+		echo "qqbot started"
+	fi
+}
+
+function stop()
+{
+	if [ "$pid"x = ""x ];then
+		echo "qqbot is not running"
+	else
+		kill -INT $pid
+	fi
+}
+
+function status()
+{
+	if [ "$pid"x = ""x ];then
+		echo "qqbot is not running"
+	else
+		echo "qqbot is running($pid)"
+	fi
+}
+
+function restart()
+{
+	stop
+	start
+}
+
+case $1 in
+	start) start;;
+	stop) stop;;
+	restart) restart;;
+	status) status;;
+	*) exit 1;;
+esac
