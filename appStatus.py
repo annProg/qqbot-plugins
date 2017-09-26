@@ -244,6 +244,14 @@ def manageBot(bot, contact, content, qq):
 		bot.SendTo(contact, smilesRandom() + "qqbot即将重启")
 		bot.Restart()
 	
+def customCmd(content, qq):
+	if not isAdmin(qq):
+		return False
+	cmd = config.get("command", content)
+	msg = os.popen(cmd).read()
+	if not msg:
+		msg = cmd + "执行异常"
+	return msg
 
 def showHelp(contend, cmd):
 	options = config.options('msg')
@@ -263,6 +271,7 @@ def onQQMessage(bot, contact, member, content):
 	
 	content = content.replace('[@ME]  ', '')
 	cmd = content.split(' ')
+	contentTrim = content.replace('#', '')
 	
 	# 获取消息发送者QQ号
 	if contact.ctype == "group":
@@ -282,6 +291,8 @@ def onQQMessage(bot, contact, member, content):
 		bot.SendTo(contact, smilesRandom() + myCIs(content, cmd))
 	elif re.match('^-.*', content):
 		manageBot(bot, contact, content, qq)
+	elif contentTrim in config.options("command"):
+		bot.SendTo(contact, smilesRandom() + customCmd(contentTrim, qq))
 	else:
 		cmdError(bot, contact)
 

@@ -43,3 +43,6 @@ superadmin = qq号=邮箱,qq号=邮箱
 [qqbot]
 ; 管理员，有重启和停机的权限
 admin = qq号
+
+[command]
+zbxtr = /root/opsbot/grafana_image.sh zbx
