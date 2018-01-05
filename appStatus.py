@@ -65,8 +65,10 @@ def sendMail(qq, cluster, app):
 	filelist = [imgname]
 	content = '<img style="max-width:100%;" class="aligncenter" src="cid:' + imgname + '" alt="app监控图表" />'
 	
-	ret = http_send_attachmail(config.get('mail', 'api'), config.get('mail', 'server'), config.get('mail', 'user'), \
-		config.get('mail', 'passwd'), addr, sub, content, filelist)
+	#ret = http_send_attachmail(config.get('mail', 'api'), config.get('mail', 'server'), config.get('mail', 'user'), \
+	#	config.get('mail', 'passwd'), addr, sub, content, filelist)
+	ret = {'status':0,'msg':'邮件发送功能已停用'}
+	addr = '(邮件发送功能已停用)'
 	try:
 		if ret['status'] != 0:
 			errmsg = "邮件发送异常:" + ret['msg']
@@ -150,7 +152,7 @@ def deployApp(content, cmd, qq):
 		superadmin = dict(mpaasSuperAdmin(), **qqOwner)
 		if qq not in superadmin.keys():
 			msg = "【APP重部】" + qq + " 没有权限操作 " + app + \
-				"\n  权限数据基于CMDB，请确认您在CMDB中填写了QQ号"
+				"\n  权限数据基于CMDB，请确认您在CMDB中填写了QQ号(由于smartqq接口变化，已关闭重部功能)"
 			return msg
 		msg = os.popen(config.get("app", "mpaasupdate") + " -cluster " + cluster + " -app " + app + \
 			" -email " + superadmin[qq]).read()
@@ -278,11 +280,12 @@ def onQQMessage(bot, contact, member, content):
 		qq = member.qq
 	else:
 		qq = contact.qq
-
+	uin = contact.uin
+	
 	if re.match('^st\s.*', content):
 		bot.SendTo(contact, smilesRandom() + appStatus(content, cmd, qq))
 	elif re.match('^dp\s.*', content):
-		bot.SendTo(contact, smilesRandom() + deployApp(content, cmd, qq))
+		bot.SendTo(contact, smilesRandom() + deployApp(content, cmd, uin))
 	elif re.match('^c\s.*', content):
 		bot.SendTo(contact, smilesRandom() + diskClean(content, cmd))
 	elif re.match('^o\s.*', content):
@@ -290,9 +293,9 @@ def onQQMessage(bot, contact, member, content):
 	elif re.match('^u\s.*', content):
 		bot.SendTo(contact, smilesRandom() + myCIs(content, cmd))
 	elif re.match('^-.*', content):
-		manageBot(bot, contact, content, qq)
+		manageBot(bot, contact, content, uin)
 	elif contentTrim in config.options("command"):
-		bot.SendTo(contact, smilesRandom() + customCmd(contentTrim, qq))
+		bot.SendTo(contact, smilesRandom() + customCmd(contentTrim, uin))
 	else:
 		cmdError(bot, contact)
 
