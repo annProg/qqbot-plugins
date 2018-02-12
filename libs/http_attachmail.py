@@ -40,10 +40,13 @@ def http_send_attachmail(mail_api, server, user, passwd, to, sub, content, filel
 	m = MultipartEncoder(fields)
 	headers = {"content-type":m.content_type}
 	r = requests.post(mail_api, data=m, headers=headers)
-	ret = r.json()
-	status = str(ret['status']) + "-" + ret['msg']
-	sendlog(status, to, sub)
-	return ret
+	try:
+		ret = r.json()
+		status = str(ret['status']) + "-" + ret['msg']
+		return ret
+	except:
+		sendlog(r.text,to,sub)
+		return {'status':10,'msg':r.text}
 
 if __name__ == '__main__':
 	to=sys.argv[1]

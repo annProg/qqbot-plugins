@@ -264,18 +264,20 @@ def bind(cmd, qq):
 	count = len(cmd)
 	user = cmd[1]
 	if count == 2:
-		r = randKey()
 		password = randpass()
 		db_bind.update(user,password)
 		sub = "qqbot 绑定邮箱"
 		content = "请向机器人发送以下指令完成绑定:   bind " + user + " " + password
 		filelist = []
-		ret = http_send_attachmail(config.get('mail', 'api'), config.get('mail', 'server'), \
-			config.get('mail', 'user'), config.get('mail', 'passwd'), user, sub, content, filelist)
-		if ret['status'] != 0:
-			return("邮件发送异常:" + ret['msg'])
-		else:
-			return("邮件已发送:" + user)
+		try:
+			ret = http_send_attachmail(config.get('mail', 'api'), config.get('mail', 'server'), \
+				config.get('mail', 'user'), config.get('mail', 'passwd'), user, sub, content, filelist)
+			if ret['status'] != 0:
+				return("邮件发送异常:" + ret['msg'])
+			else:
+				return("邮件已发送:" + user)
+		except:
+			return("邮件发送异常")
 	if count == 3:
 		if db_bind.select(user) == cmd[2]:
 			db_who.update(qq,user)
