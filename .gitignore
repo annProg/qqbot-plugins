@@ -2,3 +2,4 @@
 *.png
 conf.sh
 *.pyc
+db/*

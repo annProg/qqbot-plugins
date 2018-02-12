@@ -8,16 +8,21 @@ from influxdb import InfluxDBClient
 import configparser
 import json
 from libs.http_attachmail import http_send_attachmail
+from libs.db import jsonDB
 import logging
 import shutil
 import datetime
 import uuid
 import requests
 from random import choice
+import string
 
 
 config = configparser.ConfigParser()
 config.read(CWD+"/conf.ini")   # 注意这里必须是绝对路径
+
+db_bind = jsonDB(CWD + "/db/bind.json")
+db_who = jsonDB(CWD + "/db/who.json")
 
 logging.basicConfig(level=logging.DEBUG,
         format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
@@ -133,29 +138,28 @@ def appStatus(content, cmd, qq):
 def mpaasSuperAdmin():
 	super = config.get("app", "superadmin")
 	super = super.split(",")
-	superadmin = {}
-	for item in super:
-		i = item.split('=')
-		superadmin[i[0]] = i[1]
-	return superadmin
+	return super
 
 def deployApp(content, cmd, qq):
 	try:
 		cluster = clusterTrim(cmd[1])
 		app = cmd[2]
-		owner, qqOwner = _appOwner(app)
+		owner = _appOwner(app)
+		user = db_who.select(qq)
+		if not user:
+			user = "用户未绑定邮箱"
 		if not owner or not check("cluster", cluster):
 			msg = "集群 " + cluster + "或APP " + app + "不存在"
 			msg = msg + "\n" + config.get('msg', 'cluster').replace('\\n', '\n')
 			msg = msg + "\n" + "【APP】需要先录入CMDB才能使用机器人部署"
 			return msg
-		superadmin = dict(mpaasSuperAdmin(), **qqOwner)
-		if qq not in superadmin.keys():
-			msg = "【APP重部】" + qq + " 没有权限操作 " + app + \
-				"\n  权限数据基于CMDB，请确认您在CMDB中填写了QQ号(由于smartqq接口变化，已关闭重部功能)"
+		superadmin = mpaasSuperAdmin() + owner
+		if user not in superadmin:
+			msg = "【APP重部】" + user + " 没有权限操作 " + app
 			return msg
+		#return config.get("app", "mpaasupdate")
 		msg = os.popen(config.get("app", "mpaasupdate") + " -cluster " + cluster + " -app " + app + \
-			" -email " + superadmin[qq]).read()
+			" -email " + user).read()
 		if not msg:
 			msg = "【APP重部】执行异常"
 		return msg
@@ -173,18 +177,16 @@ def _appOwner(app):
 	d = r.json()
 	c = d['objects']
 	if not c:
-		return([], {})
+		return([])
 	owner = []
-	qqOwner = {}
 	for k,v in c.items():
 		owner.append(v['fields']['friendlyname'] + '(' + v['fields']['phone'] + ')')
-		qqOwner[v['fields']['qq']] = v['fields']['email']
-	return(owner, qqOwner)
+	return(owner)
 
 def appOwner(content, cmd):
 	try:
 		app = cmd[1]
-		owner,qq = _appOwner(app)
+		owner = _appOwner(app)
 		if not owner:
 			return("【APP联系人查询】 未找到APP：" + app)
 		owner = "\n           ".join(owner)
@@ -229,7 +231,7 @@ def myCIs(contend, cmd):
 	
 def isAdmin(qq):
 	admins = config.get("qqbot", "admin").split(",")
-	if qq in admins:
+	if db_who.select(qq) in admins:
 		return True
 	return False
 
@@ -253,7 +255,36 @@ def customCmd(content, qq):
 	msg = os.popen(cmd).read()
 	if not msg:
 		msg = cmd + "执行异常"
-	return msg
+	return str(msg)
+
+def randpass(length=20, chars=string.ascii_letters+string.digits):
+	return ''.join([choice(chars) for i in range(length)])
+
+def bind(cmd, qq):
+	count = len(cmd)
+	user = cmd[1]
+	if count == 2:
+		r = randKey()
+		password = randpass()
+		db_bind.update(user,password)
+		sub = "qqbot 绑定邮箱"
+		content = "请向机器人发送以下指令完成绑定:   bind " + user + " " + password
+		filelist = []
+		ret = http_send_attachmail(config.get('mail', 'api'), config.get('mail', 'server'), \
+			config.get('mail', 'user'), config.get('mail', 'passwd'), user, sub, content, filelist)
+		if ret['status'] != 0:
+			return("邮件发送异常:" + ret['msg'])
+		else:
+			return("邮件已发送:" + user)
+	if count == 3:
+		if db_bind.select(user) == cmd[2]:
+			db_who.update(qq,user)
+			return("uin: " + qq + " 已绑定邮箱 " + user)
+		else:
+			return("绑定失败")
+
+def who(qq):
+	return("you are: " + db_who.select(qq))
 
 def showHelp(contend, cmd):
 	options = config.options('msg')
@@ -275,27 +306,31 @@ def onQQMessage(bot, contact, member, content):
 	cmd = content.split(' ')
 	contentTrim = content.replace('#', '')
 	
-	# 获取消息发送者QQ号
+	# 获取消息发送者QQ号(目前无法获取到qq号，使用UIN代替)
+	# bot.SendTo(contact,json.dumps(contact.__dict__))
 	if contact.ctype == "group":
-		qq = member.qq
+		qq = member.uin
 	else:
-		qq = contact.qq
-	uin = contact.uin
+		qq = contact.uin
 	
 	if re.match('^st\s.*', content):
 		bot.SendTo(contact, smilesRandom() + appStatus(content, cmd, qq))
 	elif re.match('^dp\s.*', content):
-		bot.SendTo(contact, smilesRandom() + deployApp(content, cmd, uin))
+		bot.SendTo(contact, smilesRandom() + deployApp(content, cmd, qq))
 	elif re.match('^c\s.*', content):
 		bot.SendTo(contact, smilesRandom() + diskClean(content, cmd))
 	elif re.match('^o\s.*', content):
 		bot.SendTo(contact, smilesRandom() + appOwner(content, cmd))
 	elif re.match('^u\s.*', content):
 		bot.SendTo(contact, smilesRandom() + myCIs(content, cmd))
+	elif re.match('^who$', content):
+		bot.SendTo(contact, smilesRandom() + who(qq))
+	elif re.match('^bind\s.*', content):
+		bot.SendTo(contact, smilesRandom() + bind(cmd,qq))
 	elif re.match('^-.*', content):
-		manageBot(bot, contact, content, uin)
+		manageBot(bot, contact, content,qq )
 	elif contentTrim in config.options("command"):
-		bot.SendTo(contact, smilesRandom() + customCmd(contentTrim, uin))
+		bot.SendTo(contact, smilesRandom() + customCmd(contentTrim, qq))
 	else:
 		cmdError(bot, contact)
 

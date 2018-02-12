@@ -38,11 +38,11 @@ dir = /wwwroot/qqbot-img
 [app]
 cluster = n=newtv,c=cn-cibn,o=online,of=cn-offline,hk=hkonline,us=global
 mpaasupdate = /opt/tools/update_task.task
-superadmin = qq号=邮箱,qq号=邮箱
+superadmin = 邮箱,邮箱
 
 [qqbot]
 ; 管理员，有重启和停机的权限
-admin = qq号
+admin = 邮箱,邮箱
 
 [command]
 zbxtr = /root/opsbot/grafana_image.sh zbx
