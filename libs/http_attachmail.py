@@ -22,7 +22,7 @@ def sendlog(status, to_list, subject):
 	with open(log, 'a+') as f:
 		f.write(curdate + " " + status + " " + to_list + " " + subject + "\n")
 
-def http_send_attachmail(mail_api, server, user, passwd, to, sub, content, filelist=[], mail_format="html", mail_from=""):
+def http_send_attachmail(mail_api, to, sub, content, filelist=[], mail_format="html", mail_from=""):
 	attachNum = str(len(filelist))
 	attachs = {}
 	i = 1
@@ -30,13 +30,9 @@ def http_send_attachmail(mail_api, server, user, passwd, to, sub, content, filel
 		idx = 'attach' + str(i)
 		attachs[idx] = (attach, open(attach, "rb"))
 		i+=1
-	mailFrom = {}
-	if mail_from != "":
-		mailFrom['from'] = mail_from
-	fields = {"server":server, "user":user, "passwd":passwd, "tos":to, \
+	fields = {"tos":to, \
 		"subject":sub, "content":content, "format":mail_format, "attachNum":attachNum}
 	fields = dict(fields, **attachs)
-	fields = dict(fields, **mailFrom)
 	m = MultipartEncoder(fields)
 	headers = {"content-type":m.content_type}
 	r = requests.post(mail_api, data=m, headers=headers)
@@ -52,9 +48,6 @@ if __name__ == '__main__':
 	to=sys.argv[1]
 	msg="http_mail测试<img src=\"cid:/root/file1.png\"/>"
 	mail_api = "http://localhost:3001/api/attachmail"
-	server = sys.argv[2]
-	user = sys.argv[3]
-	passwd = sys.argv[4]
-	ret = http_send_attachmail(mail_api, server, user, passwd, to,"http_mail测试", msg, ["/root/file1.png"])
+	ret = http_send_attachmail(mail_api, to,"http_mail测试", msg, ["/root/file1.png"])
 	print(ret)
 

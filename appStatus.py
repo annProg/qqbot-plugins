@@ -270,8 +270,7 @@ def bind(cmd, qq):
 		content = "请向机器人发送以下指令完成绑定:   bind " + user + " " + password
 		filelist = []
 		try:
-			ret = http_send_attachmail(config.get('mail', 'api'), config.get('mail', 'server'), \
-				config.get('mail', 'user'), config.get('mail', 'passwd'), user, sub, content, filelist)
+			ret = http_send_attachmail(config.get('mail', 'api'), user, sub, content, filelist)
 			if ret['status'] != 0:
 				return("邮件发送异常:" + ret['msg'])
 			else:
